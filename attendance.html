@@ -165,7 +165,6 @@
       }
     }
 
-    // Mostrar o indicador de loading ao tentar obter as coordenadas
     LOADING.style.display = 'block';
 
     navigator.geolocation.watchPosition(p => {
@@ -175,13 +174,12 @@
       LON_SPAN.textContent = pos.lon.toFixed(6);
       CHECK_BTN.disabled = false;
 
-      // Esconder o indicador de loading e mostrar o mapa
       LOADING.style.display = 'none';
       document.getElementById('map').style.display = 'block';
       updateMap(pos.lat, pos.lon);
     }, e => {
       STATUS.textContent = 'Erro: ' + e.message;
-      LOADING.style.display = 'none'; // Esconder o loading em caso de erro
+      LOADING.style.display = 'none';
     }, { enableHighAccuracy: true });
 
     CHECK_BTN.onclick = async () => {
