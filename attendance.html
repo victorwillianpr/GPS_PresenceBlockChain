@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro de Presença</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: url('https://upload.wikimedia.org/wikipedia/commons/5/5b/OpenStreetMap_Mapnik_map.png') repeat;
+      background-size: cover;
+      background-attachment: fixed;
+      position: relative;
+      color: #e0ffe0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.75);
+      z-index: -1;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+      color: #ffffff;
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      text-shadow: 0 0 8px #00ff88, 0 0 2px #000;
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+    }
+
+    p {
+      font-size: 1.2rem;
+      background-color: rgba(0, 50, 0, 0.5);
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 5px #00ff88;
+    }
+
+    button {
+      margin: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #004d00;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00ff88;
+      transition: transform 0.2s, background-color 0.3s;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #007a33;
+      transform: scale(1.05);
+    }
+
+    #status {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: rgba(0, 40, 0, 0.7);
+      border-left: 5px solid #00ff88;
+      max-width: 600px;
+      width: 100%;
+      font-size: 1rem;
+      white-space: pre-wrap;
+      box-shadow: 0 0 8px #00ff88;
+      border-radius: 10px;
+    }
+
+    #map {
+      display: none;
+      height: 300px;
+      width: 100%;
+      max-width: 600px;
+      margin-top: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ff88;
+    }
+
+    #loading {
+      font-size: 1.2rem;
+      color: #fff;
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 1rem;
+      border-radius: 8px;
+      display: none;
+      margin-top: 1rem;
+      box-shadow: 0 0 10px #00ff88;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #00ff88;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 2s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>📍 Registro de Presença GPS</h1>
+  <p>Latitude: <span id="lat">–</span>, Longitude: <span id="lon">–</span></p>
+  <button id="checkBtn" disabled>🛰 Verificar Localização</button>
+  <button id="regBtn" disabled>✅ Registrar Presença</button>
+  <pre id="status"></pre>
+  <div id="loading" class="spinner"></div>
+  <div id="map"></div>
+
+  <script>
+    let pos = { lat: null, lon: null };
+    let map, marker;
+
+    const STATUS = document.getElementById('status');
+    const LAT_SPAN = document.getElementById('lat');
+    const LON_SPAN = document.getElementById('lon');
+    const CHECK_BTN = document.getElementById('checkBtn');
+    const REG_BTN = document.getElementById('regBtn');
+    const LOADING = document.getElementById('loading');
+
+    function updateMap(lat, lon) {
+      if (!map) {
+        map = L.map('map').setView([lat, lon], 17);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        marker = L.marker([lat, lon]).addTo(map)
+          .bindPopup("Você está aqui").openPopup();
+      } else {
+        map.setView([lat, lon], 17);
+        marker.setLatLng([lat, lon]);
+      }
+    }
+
+    // Mostrar o indicador de loading ao tentar obter as coordenadas
+    LOADING.style.display = 'block';
+
+    navigator.geolocation.watchPosition(p => {
+      pos.lat = p.coords.latitude;
+      pos.lon = p.coords.longitude;
+      LAT_SPAN.textContent = pos.lat.toFixed(6);
+      LON_SPAN.textContent = pos.lon.toFixed(6);
+      CHECK_BTN.disabled = false;
+
+      // Esconder o indicador de loading e mostrar o mapa
+      LOADING.style.display = 'none';
+      document.getElementById('map').style.display = 'block';
+      updateMap(pos.lat, pos.lon);
+    }, e => {
+      STATUS.textContent = 'Erro: ' + e.message;
+      LOADING.style.display = 'none'; // Esconder o loading em caso de erro
+    }, { enableHighAccuracy: true });
+
+    CHECK_BTN.onclick = async () => {
+      try {
+        let r = await axios.post('http://localhost:8000/attendance/check', {
+          student_id: 'aluno1',
+          latitude: pos.lat,
+          longitude: pos.lon
+        });
+        STATUS.textContent = r.data.message;
+        REG_BTN.disabled = false;
+      } catch (err) {
+        STATUS.textContent = err.response?.data.detail || err;
+      }
+    };
+
+    REG_BTN.onclick = async () => {
+      try {
+        let r = await axios.post('http://localhost:8000/mine');
+        STATUS.textContent = r.data.message;
+      } catch (err) {
+        STATUS.textContent = 'Erro na mineração';
+      }
+    };
+  </script>
+</body>
+</html>
